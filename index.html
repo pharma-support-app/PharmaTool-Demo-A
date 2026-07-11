@@ -1,16 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-	<!-- Google tag (gtag.js) -->
-	<script async src="https://www.googletagmanager.com/gtag/js?id=G-DQDYC651L5"></script>
-	<script>
-	  window.dataLayer = window.dataLayer || [];
-	  function gtag(){dataLayer.push(arguments);}
-	  gtag('js', new Date());
-	
-	  gtag('config', 'G-DQDYC651L5');
-	</script>
-	
+		
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>単位計算ツール</title>
@@ -123,7 +114,7 @@
 		    line-height: 1.6;
 		}
 
-        /* 💡 新設：残り回数カウンターのスタイル */
+        /* 💡 残り回数カウンターのスタイル */
         .trial-counter-bar {
             background-color: #e6f4f3;
             border-left: 5px solid var(--clr-primary);
@@ -135,6 +126,54 @@
             background-color: #f8d7da;
             border-left-color: #dc3545;
             color: #721c24;
+        }
+
+        /* 💡 新設：体験版の上限お知らせモーダル（Bootstrap JS非依存の自前実装） */
+        .limit-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .limit-modal-overlay.show {
+            display: flex;
+        }
+        .limit-modal-box {
+            background: #fff;
+            border-radius: 14px;
+            max-width: 440px;
+            width: 100%;
+            padding: 28px 28px 22px;
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.25);
+            position: relative;
+        }
+        .limit-modal-box .modal-close-x {
+            position: absolute;
+            top: 12px; right: 16px;
+            background: none; border: none;
+            font-size: 1.4rem; line-height: 1;
+            color: var(--clr-muted);
+            cursor: pointer;
+        }
+        .limit-modal-box h5 {
+            color: var(--clr-primary-dark);
+            font-weight: 700;
+            margin-bottom: 14px;
+            padding-right: 20px;
+        }
+        .limit-modal-box p {
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+        }
+        .limit-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
         }
 
 		@media (max-width: 767.98px) {
@@ -158,6 +197,21 @@
 <body>
 
 <div id="loading-overlay">データを読み込み中...</div>
+
+<!-- 💡 新設：体験版の上限お知らせモーダル -->
+<div id="limit-modal-overlay" class="limit-modal-overlay">
+    <div class="limit-modal-box">
+        <button type="button" class="modal-close-x" onclick="closeLimitModal()" aria-label="閉じる">&times;</button>
+        <h5>本日の体験回数の上限に達しました</h5>
+        <p>体験版は<strong>1日最大10回</strong>までご利用いただけます。</p>
+        <p>残り回数は<strong>明日0時に3回分</strong>自動回復しますので、また明日お試しください。</p>
+        <p class="text-muted small mb-0">回数を気にせず使いたい方は、制限のない製品版もご検討ください。</p>
+        <div class="limit-modal-actions">
+            <button type="button" class="btn btn-outline-secondary" onclick="closeLimitModal()">閉じる</button>
+            <a href="#" id="product-link-in-modal" target="_blank" class="btn btn-primary fw-bold">製品版をチェックする</a>
+        </div>
+    </div>
+</div>
 
 <div class="container" style="max-width: 1000px;">
     <header class="app-header">
@@ -262,7 +316,7 @@
                     業務で毎日何回も使用される方や、回数を一切気にせず現場を快適に効率化したい方向けに、すべての制限を解除した<strong>「製品版」</strong>をnoteにてご用意しています。
                 </p>
                 <div class="text-end">
-                    <a href="https://note.com/" target="_blank" class="btn btn-primary btn-sm fw-bold">製品版をチェックする</a>
+                    <a href="#" id="product-link-card" target="_blank" class="btn btn-primary btn-sm fw-bold">製品版をチェックする</a>
                 </div>
             </div>
         </div>
@@ -270,6 +324,9 @@
 </div>
 
 <script>
+    // 💡 製品版ページのURL（決まり次第、ここだけ書き換えればOK）
+    const PRODUCT_URL = "#"; // TODO: 製品版ページのURLが決まったらここを書き換えてください
+
     // 💡 回数制限用の定数
     const MAX_COUNT = 10;
     const DAILY_RECOVERY = 3;
@@ -316,6 +373,10 @@
         buildTable();
         buildDropdowns(masterData);
 
+        // 💡 製品版リンクのURLを反映（この1箇所を直せば全リンクに反映されます）
+        document.getElementById('product-link-card').href = PRODUCT_URL;
+        document.getElementById('product-link-in-modal').href = PRODUCT_URL;
+
         // 💡 起動時に回数チェックと日付による自動回復を行う
         updateRecoveryAndDisplay();
 
@@ -323,7 +384,23 @@
         document.getElementById('loading-overlay').style.display = 'none';
     });
 
-    // 💡 新設：回数の回復計算と画面表示の同期
+    // 💡 モーダルの表示・非表示
+    function showLimitModal() {
+        const overlay = document.getElementById('limit-modal-overlay');
+        if (overlay) overlay.classList.add('show');
+    }
+    function closeLimitModal() {
+        const overlay = document.getElementById('limit-modal-overlay');
+        if (overlay) overlay.classList.remove('show');
+    }
+    // オーバーレイの背景（枠外）をクリックしても閉じられるようにする
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'limit-modal-overlay') {
+            closeLimitModal();
+        }
+    });
+
+    // 💡 回数の回復計算と画面表示の同期
     function updateRecoveryAndDisplay() {
         let count = parseInt(localStorage.getItem('unit_calc_trial_count') ?? MAX_COUNT);
         let lastDateStr = localStorage.getItem('unit_calc_trial_date'); // "YYYY-MM-DD"
@@ -350,7 +427,7 @@
         const counterBar = document.getElementById('trial-counter-bar');
         const calcBtnEl = document.getElementById('main-calc-btn');
 
-        // 0回になったら赤くしてボタンを無効化
+        // 0回になったら赤くしてボタンを無効化＋お知らせモーダルを表示
         if (count <= 0) {
             counterBar.classList.add('danger');
             if (calcBtnEl) {
@@ -358,6 +435,7 @@
                 calcBtnEl.classList.replace('btn-outline-primary', 'btn-danger');
                 calcBtnEl.innerHTML = '回数上限に達しました';
             }
+            showLimitModal();
         } else {
             counterBar.classList.remove('danger');
             if (calcBtnEl) {
@@ -470,10 +548,10 @@ function resetForm() {
 	
 /* --- 計算ロジック --- */
 function calcBtn() {
-    // 💡 1. 残り回数のガードチェック
+    // 💡 1. 残り回数のガードチェック（0ならモーダルでお知らせして終了）
     let count = parseInt(localStorage.getItem('unit_calc_trial_count') ?? MAX_COUNT);
     if (count <= 0) {
-        alert("本日の体験回数の上限に達しています。明日また回復します。");
+        showLimitModal();
         return;
     }
 
@@ -560,6 +638,7 @@ function calcBtn() {
     }
 
     // 💡 2. 計算に成功したら回数を1つ減らして状態を保存
+    // （updateRecoveryAndDisplay内で0になった場合は自動的にモーダルが表示されます）
     count -= 1;
     localStorage.setItem('unit_calc_trial_count', count);
     updateRecoveryAndDisplay();
