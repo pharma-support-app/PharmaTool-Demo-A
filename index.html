@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>単位計算アプリ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        /* 残り回数表示のスタイリング */
+        .trial-counter {
+            background-color: #e9ecef;
+            border-left: 5px solid #007bff;
+            font-weight: bold;
+        }
+        .trial-counter.danger {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container my-5">
+    <h1 class="text-center mb-4">単位計算アプリ</h1>
+
+    <div class="card mb-4">
+        <div id="counter-display" class="card-body trial-counter d-flex justify-content-between align-items-center">
+            <span>【体験版】本日の残り使用回数: <span id="remaining-count" class="fs-4">10</span> / 10 回</span>
+            <small class="text-muted">※毎日0時に3回分回復します（最大10回）</small>
+        </div>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <div class="mb-3">
+            <label for="calc-select" class="form-label">計算メニューを選択</label>
+            <select id="calc-select" class="form-select">
+                <option value="mg-ml">mg から ml（液量）の計算</option>
+                <option value="mcg-ml">mcg から ml（液量）の計算</option>
+                <option value="g-mg">g から mg の計算</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label id="input-label" for="input-value" class="form-label">数値を入力してください</label>
+            <input type="number" id="input-value" class="form-control" placeholder="数値を入力">
+        </div>
+
+        <button id="calc-btn" class="btn btn-primary w-100 fs-5" onclick="executeCalculation()">計算する</button>
+
+        <div class="mt-4">
+            <h5>計算結果:</h5>
+            <div id="result-display" class="alert alert-secondary fs-4 text-center">--</div>
+        </div>
+    </div>
+
+    <div class="card bg-light p-4">
+        <h5>💡 お断り・ご案内</h5>
+        <p class="text-muted small mb-2">
+            ※ 本ツールは計算の補助を行うものであり、最終的な投与量や調剤の判断は、必ず医療従事者ご自身で再確認を行ってください。本ツールを使用したことによるいかなる不利益についても、制作者は責任を負いかねます。
+        </p>
+        <hr>
+        <div class="p-3 bg-white border rounded">
+            <h6 class="text-primary fw-bold mb-2">🚀 回数制限のない「製品版」のご案内</h6>
+            <p class="small mb-0">
+                現在ご利用いただいているものは<strong>体験版（1日最大10回・毎日3回回復）</strong>です。<br>
+                業務で頻繁に使用される方や、回数を気にせず快適に使いたい方向けに、制限が一切ない<strong>「製品版（noteにて公開中）」</strong>をご用意しています。現場の効率化にぜひお役立てください！
+            </p>
+            <div class="mt-3 text-end">
+                <a href="https://note.com/" target="_blank" class="btn btn-outline-primary btn-sm fw-bold">製品版をチェックする</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 体験版の定数設定
+const MAX_COUNT = 10;
+const DAILY_RECOVERY = 3;
+
+// ページ読み込み時の初期化処理
+document.addEventListener('DOMContentLoaded', () => {
+    updateRecoveryAndDisplay();
+});
+
+// 回数の回復計算と画面表示の更新を行う関数
+function updateRecoveryAndDisplay() {
+    // ローカルストレージからデータを取得
+    let count = parseInt(localStorage.getItem('unit_calc_count') ?? MAX_COUNT);
+    let lastDateStr = localStorage.getItem('unit_calc_last_date'); // "YYYY-MM-DD"
+    
+    const todayStr = getTodayString();
+
+    if (lastDateStr && lastDateStr !== todayStr) {
+        // 日付が変わっていた場合、経過日数を計算
+        const lastDate = new Date(lastDateStr);
+        const today = new Date(todayStr);
+        const diffTime = Math.abs(today - lastDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        // 経過日数 × 3回分を回復
+        count += (diffDays * DAILY_RECOVERY);
+        if (count > MAX_COUNT) count = MAX_COUNT; // 最大10回でストップ
+
+        // 回復後の値を保存
+        localStorage.setItem('unit_calc_count', count);
+    }
+
+    // 最後にアプリを開いた（チェックした）日付を今日に更新
+    localStorage.setItem('unit_calc_last_date', todayStr);
+
+    // 画面の残り回数表示を更新
+    const countDisplay = document.getElementById('remaining-count');
+    const wrapper = document.getElementById('counter-display');
+    countDisplay.textContent = count;
+
+    // 残り0回なら赤く目立たせる
+    if (count <= 0) {
+        wrapper.classList.add('danger');
+        document.getElementById('calc-btn').disabled = true;
+        document.getElementById('calc-btn').textContent = "本日の回数上限に達しました";
+    } else {
+        wrapper.classList.remove('danger');
+        document.getElementById('calc-btn').disabled = false;
+        document.getElementById('calc-btn').textContent = "計算する";
+    }
+}
+
+// 今日の日付を "YYYY-MM-DD" 形式の文字列で取得する関数（時分秒を排除して日付変更線を跨いだかだけを見る）
+function getTodayString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// 計算を実行するメイン関数
+function executeCalculation() {
+    // 1. まず現在の残り回数を再チェック
+    let count = parseInt(localStorage.getItem('unit_calc_count') ?? MAX_COUNT);
+    
+    if (count <= 0) {
+        alert("本日の利用回数の上限に達しています。明日また回復します。");
+        return;
+    }
+
+    // 2. 計算処理（元のロジックをここに集約・仮の計算サンプルです）
+    const menu = document.getElementById('calc-select').value;
+    const val = parseFloat(document.getElementById('input-value').value);
+    let resultText = "--";
+
+    if (!isNaN(val)) {
+        if (menu === "mg-ml") {
+            resultText = `${val} mg は ○○ ml です（※元の計算式）`;
+        } else if (menu === "mcg-ml") {
+            resultText = `${val} mcg は ○○ ml です（※元の計算式）`;
+        } else if (menu === "g-mg") {
+            resultText = `${val * 1000} mg`;
+        }
+        document.getElementById('result-display').textContent = resultText;
+
+        // 3. 計算が正常に行われたら回数を1減らして保存・画面更新
+        count -= 1;
+        localStorage.setItem('unit_calc_count', count);
+        updateRecoveryAndDisplay();
+    } else {
+        alert("正しい数値を入力してください。");
+    }
+}
+</script>
+
+</body>
+</html>
